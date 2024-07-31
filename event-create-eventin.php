@@ -34,6 +34,12 @@ if ( !defined('ABSPATH') ) {
 } 
 add_filter('wp_insert_post_data', 'filter_post_data', 10, 3);*/
 
+/**
+ * Create event and introduce it in the exposicion pod
+ * 
+ * @param array $event Event data
+ * @param array $request Full details about the request.
+ */
 
 function filter_post_data( $event, $request ) {
     $event_data = prepare_item_for_database($request);
@@ -44,14 +50,19 @@ function filter_post_data( $event, $request ) {
         'id' => $event->id,
         'zona_de_la_nave' => $event_data['etn_event_location']['address']
     ];
-    //$merged_params = array_merge($params, $event_data); // Uniendo $params con $event_data
+
     $pod = pods('exposicion')->add($params);
-    file_put_contents('vardump.txt', $event->id);
-    file_put_contents('vardumpOtro.txt', $pod);
+
 }
 add_action('eventin_event_created', 'filter_post_data', 10, 2);
 
-function update( $event, $request ) {
+/**
+ * Update event of exposicion pod
+ * 
+ * @param array $event Event data
+ * @param array $request Full details about the request.
+ */
+function update_post_data( $event, $request ) {
     $event_data = prepare_item_for_database($request);
     $params = [
         'post_title' => $event_data['post_title'],
@@ -61,8 +72,8 @@ function update( $event, $request ) {
         'featured_image' => $event_data['event_banner'],
         'artistas' => $event_data['etn_event_organizer']
     ];
-    $pod = pods('exposicion', $event->id);
-    file_put_contents('vardumpOtro.txt', array_key($event['etn_event_organizer']));
+
+    $pod = pods('exposicion', $event->id);     
     
     if( isset( $params['post_title'] ) ){
         $pod -> save('post_title', $event_data['post_title'], $event->id);
@@ -85,14 +96,23 @@ function update( $event, $request ) {
     }
 
     if( isset( $params['artistas'] ) ){
-        $pod -> save('artistas', array_values($event_data['etn_event_organizer']), $event->id);
+        $organizer_names = [];
+        foreach ($event_data['etn_event_organizer'] as $organizer_id) {
+            $organizer_name = get_the_title($organizer_id);
+            $organizer_names[] = $organizer_name;
+        }
+        $pod -> save('artistas', $organizer_names, $event->id);
     }
-    
-    // $pod -> add_to('featured_image', $event_data['event_banner'], $event->id);
-    // $pod -> add_to('post_title', $event_data['post_title'], $event->id);
-}
-add_action('eventin_event_updated', 'update', 10, 2);
 
+}
+add_action('eventin_event_updated', 'update_post_data', 10, 2);
+
+/**
+ * Prepare the item for create or update operation.
+ *
+ * @param WP_REST_Request $request Request object.
+ * @return WP_Error|object $prepared_item
+ */
 function prepare_item_for_database( $request ) {
     $input_data = json_decode( $request->get_body(), true ) ?? [];
      $validate   = etn_validate( $input_data, [
@@ -348,6 +368,13 @@ function prepare_item_for_database( $request ) {
     return $event_data;
 }
 
+/**
+ * Prepare organizer for the event
+ *
+ * @param   array  $args  [$args description]
+ *
+ * @return  array
+ */
 function prepare_organizer( $args = [] ) {
     $orgnizer_type    = isset( $args['organizer_type'] ) ? $args['organizer_type'] : '';
     $organizers       = isset( $args['organizer'] ) ? $args['organizer'] : '';
