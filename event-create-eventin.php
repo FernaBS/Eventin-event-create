@@ -39,25 +39,57 @@ function filter_post_data( $event, $request ) {
     $event_data = prepare_item_for_database($request);
     $params = [
         'post_title' => $event_data['post_title'],
-        'nombre' => $event_data['post_title'],
         'fecha_de_inicio' => $event_data['etn_start_date'],
         'fecha_de_culminacion' => $event_data['etn_end_date'],
-        'eventin_id' => $event->id
+        'id' => $event->id,
+        'zona_de_la_nave' => $event_data['etn_event_location']['address']
     ];
-    pods('area')->add($params);
+    //$merged_params = array_merge($params, $event_data); // Uniendo $params con $event_data
+    $pod = pods('exposicion')->add($params);
+    file_put_contents('vardump.txt', $event->id);
+    file_put_contents('vardumpOtro.txt', $pod);
 }
 add_action('eventin_event_created', 'filter_post_data', 10, 2);
 
 function update( $event, $request ) {
     $event_data = prepare_item_for_database($request);
-    // $params = [
-    //     'post_title' => $event_data['post_title'],
-    //     'nombre' => $event_data['post_title'],
-    //     'fecha_de_inicio' => $event_data['etn_start_date'],
-    //     'fecha_de_culminacion' => $event_data['etn_end_date']
-    // ];
-    $pod = pods('area', ['where' => "t.id = '$event->id' and t.post_status = 'Draft'"]);
-    $pod -> add_to('nombre', $event_data['post_title']);
+    $params = [
+        'post_title' => $event_data['post_title'],
+        'fecha_de_inicio' => $event_data['etn_start_date'],
+        'fecha_de_culminacion' => $event_data['etn_end_date'],
+        'zona_de_la_nave' => $event_data['etn_event_location']['address'],
+        'featured_image' => $event_data['event_banner'],
+        'artistas' => $event_data['etn_event_organizer']
+    ];
+    $pod = pods('exposicion', $event->id);
+    file_put_contents('vardumpOtro.txt', array_key($event['etn_event_organizer']));
+    
+    if( isset( $params['post_title'] ) ){
+        $pod -> save('post_title', $event_data['post_title'], $event->id);
+    }
+
+    if( isset( $params['fecha_de_inicio'] ) ){
+        $pod -> save('fecha_de_inicio', $event_data['etn_start_date'], $event->id);
+    }
+    
+    if( isset( $params['fecha_de_culminacion'] ) ){
+        $pod -> save('fecha_de_culminacion', $event_data['etn_end_date'], $event->id);
+    }
+
+    if( isset( $params['zona_de_la_nave'] ) ){
+        $pod -> save('zona_de_la_nave', $event_data['etn_event_location']['address'], $event->id);
+    }
+
+    if( isset( $params['featured_image'] ) ){
+        $pod -> save('featured_image', $event_data['event_banner'], $event->id);
+    }
+
+    if( isset( $params['artistas'] ) ){
+        $pod -> save('artistas', array_values($event_data['etn_event_organizer']), $event->id);
+    }
+    
+    // $pod -> add_to('featured_image', $event_data['event_banner'], $event->id);
+    // $pod -> add_to('post_title', $event_data['post_title'], $event->id);
 }
 add_action('eventin_event_updated', 'update', 10, 2);
 
@@ -102,9 +134,9 @@ function prepare_item_for_database( $request ) {
         $event_data['etn_select_speaker_schedule_type'] = $input_data['schedule_type'];
     }
 
-    // if ( isset( $input_data['organizer'] ) ) {
-    //     $event_data['etn_event_organizer'] = $this->prepare_organizer( $input_data );
-    // }
+    if ( isset( $input_data['organizer'] ) ) {
+        $event_data['etn_event_organizer'] = prepare_organizer( $input_data );
+    }
 
     // if ( isset( $input_data['speaker'] ) ) {
     //     $event_data['etn_event_speaker'] = $this->prepare_speaker( $input_data );
@@ -313,8 +345,36 @@ function prepare_item_for_database( $request ) {
     }
 
     
-    
     return $event_data;
 }
 
+function prepare_organizer( $args = [] ) {
+    $orgnizer_type    = isset( $args['organizer_type'] ) ? $args['organizer_type'] : '';
+    $organizers       = isset( $args['organizer'] ) ? $args['organizer'] : '';
+    $organizer_groups = isset( $args['organizer_group'] ) ? $args['organizer_group'] : '';
+
+    if ( 'single' === $orgnizer_type ) {
+        return $organizers;
+    }
+
+    $args = array(
+        'numberposts'   => -1,
+        'post_type'     => 'etn-speaker',
+        'post_status'   => 'any',
+        'fields'        => 'ids',
+        
+        'tax_query' => array(
+            'relation' => 'AND',
+            [
+                'taxonomy' => 'etn_speaker_category',
+                'field'    => 'term_id',
+                'terms'    => $organizer_groups
+            ]
+        )
+    );
+
+    $organizers = get_posts( $args );
+
+    return $organizers;
+}
 
