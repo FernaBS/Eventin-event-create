@@ -1,11 +1,11 @@
 <?php
 /**
- * Plugin Name: event-create-event
- * Plugin URI:  http://tusitio.com/mi-plugin
- * Description: Un plugin de ejemplo que muestra un mensaje con un shortcode.
+ * Plugin Name: event-create-eventin
+ * Plugin URI:  https://github.com/FernaBS/Eventin-event-create
+ * Description: Un plugin personalizado para integrar funcionalidades de eventin y pods.
  * Version:     1.0
- * Author:      Tu Nombre
- * Author URI:  http://tusitio.com
+ * Author:      Fernando Bernal Suárez, Víctor Vena
+ * Author URI:  https://github.com/FernaBS
  * License:     GPL2
  */
 
