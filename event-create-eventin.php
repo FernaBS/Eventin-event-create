@@ -28,7 +28,7 @@ function filter_post_data( $event, $request ) {
 		'post_status' => 'publish',
         'fecha_de_inicio' => $event_data['etn_start_date'],
         'fecha_de_culminacion' => $event_data['etn_end_date'],
-        'id' => $event->id,
+        'eventin_id' => $event->id,
         'zona_de_la_nave' => $event_data['etn_event_location']['address']
     ];
 
@@ -44,7 +44,15 @@ add_action('eventin_event_created', 'filter_post_data', 10, 2);
  */
 function update_post_data($event, $request) {
     $event_data = prepare_item_for_database($request);
-    $pod = pods('exposicion', $event->id);
+	
+    // Get the id of the pod corresponding to this event.
+	$pod = pods('exposicion',array('where' => "eventin_id.meta_value = '{$event->id}'"));
+	$pod_id = -1;
+	while($pod->fetch()){
+		$pod_id = $pod->field('ID');
+	}
+	if($pod_id === -1)die();
+	//
 
     $fields_to_save = [
         'post_title' => $event_data['post_title'],
@@ -64,7 +72,7 @@ function update_post_data($event, $request) {
     $fields_to_save['artistas'] = $organizer_names;
 
     foreach ($fields_to_save as $field_name => $field_value) {
-        $pod->save($field_name, $field_value, $event->id);
+        $pod->save($field_name, $field_value, $pod_id);
     }
 }
 add_action('eventin_event_updated', 'update_post_data', 10, 2);
@@ -77,32 +85,6 @@ add_action('eventin_event_updated', 'update_post_data', 10, 2);
  */
 function prepare_item_for_database( $request ) {
     $input_data = json_decode( $request->get_body(), true ) ?? [];
-	
-	//Eventin debe asegurarse de la integridad de la informacion. Si el da error no se lanzara el hook, por eso no revises.
-     // $validate   = etn_validate( $input_data, [
-        // 'title'      => [
-            // 'required',
-        // ],
-        // 'timezone'   => [
-            // 'required',
-        // ],
-        // 'start_date' => [
-            // 'required',
-        // ],
-        // 'end_date'   => [
-            // 'required',
-        // ],
-        // 'start_time' => [
-            // 'required',
-        // ],
-        // 'end_time'   => [
-            // 'required',
-        // ],
-    // ] );
-
-    // if ( is_wp_error( $validate ) ) {
-        // return $validate;
-    // }
 
     $event_data = [];
     if ( isset( $input_data['title'] ) ) {
