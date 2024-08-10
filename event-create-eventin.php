@@ -1,11 +1,11 @@
 <?php
 /**
- * Plugin Name: event-create-event
- * Plugin URI:  http://tusitio.com/mi-plugin
- * Description: Un plugin de ejemplo que muestra un mensaje con un shortcode.
+ * Plugin Name: event-create-eventin
+ * Plugin URI:  https://github.com/FernaBS/Eventin-event-create
+ * Description: Un plugin personalizado para integrar funcionalidades de eventin y pods.
  * Version:     1.0
- * Author:      Tu Nombre
- * Author URI:  http://tusitio.com
+ * Author:      Fernando Bernal Suárez, Víctor Vena
+ * Author URI:  https://github.com/FernaBS
  * License:     GPL2
  */
 
@@ -26,14 +26,14 @@ function filter_post_data($event, $request)
     $event_data = prepare_item_for_database($request);
     $params = [
         'post_title' => $event_data['post_title'],
+		'post_status' => 'publish',
         'fecha_de_inicio' => $event_data['etn_start_date'],
         'fecha_de_culminacion' => $event_data['etn_end_date'],
-        'id' => $event->id,
+        'eventin_id' => $event->id,
         'zona_de_la_nave' => $event_data['etn_event_location']['address']
     ];
 
     pods('exposicion')->add($params);
-
 }
 add_action('eventin_event_created', 'filter_post_data', 10, 2);
 
@@ -46,7 +46,15 @@ add_action('eventin_event_created', 'filter_post_data', 10, 2);
 function update_post_data($event, $request)
 {
     $event_data = prepare_item_for_database($request);
-    $pod = pods('exposicion', $event->id);
+	
+    // Get the id of the pod corresponding to this event.
+	$pod = pods('exposicion',array('where' => "eventin_id.meta_value = '{$event->id}'"));
+	$pod_id = -1;
+	while($pod->fetch()){
+		$pod_id = $pod->field('ID');
+	}
+	if($pod_id === -1)die();
+	//
 
     $fields_to_save = [
         'post_title' => $event_data['post_title'],
@@ -64,9 +72,16 @@ function update_post_data($event, $request)
         }
     }
     $fields_to_save['artistas'] = $organizer_names;
+<<<<<<< HEAD
     
     $pod->add($fields_to_save);
     
+=======
+
+    foreach ($fields_to_save as $field_name => $field_value) {
+        $pod->save($field_name, $field_value, $pod_id);
+    }
+>>>>>>> c0db3852cd2dd6a4caf538d92279d8c5a2e0faad
 }
 add_action('eventin_event_updated', 'update_post_data', 10, 2);
 
@@ -76,9 +91,14 @@ add_action('eventin_event_updated', 'update_post_data', 10, 2);
  * @param WP_REST_Request $request Request object.
  * @return WP_Error|object $prepared_item
  */
+<<<<<<< HEADHEAD
 function prepare_item_for_database($request)
 {
     $input_data = json_decode($request->get_body(), true) ?? [];
+=======
+function prepare_item_for_database( $request ) {
+    $input_data = json_decode( $request->get_body(), true ) ?? [];
+>>>>>>> c0db3852cd2dd6a4caf538d92279d8c5a2e0faad
 
     $event_data = [];
     if (isset($input_data['title'])) {
